@@ -4,7 +4,7 @@ from odoo import exceptions
 from odoo.tests import Form, common
 
 
-class TestSaleGlobalDiscount(common.SavepointCase):
+class TestSaleGlobalDiscount(common.TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -18,6 +18,14 @@ class TestSaleGlobalDiscount(common.SavepointCase):
                 "code": "TEST99999",
                 "user_type_id": cls.account_type.id,
                 "reconcile": True,
+            }
+        )
+        cls.journal_sale = cls.env["account.journal"].create(
+            {
+                "name": "Test purchase journal",
+                "code": "TSAL",
+                "type": "sale",
+                "default_account_id": cls.account.id,
             }
         )
         cls.global_discount_obj = cls.env["global.discount"]
@@ -196,19 +204,6 @@ class TestSaleGlobalDiscount(common.SavepointCase):
         discount_lines = move.line_ids.filtered("global_discount_item")
         self.assertEqual(len(discount_lines), 2)
         self.assertAlmostEqual(sum(discount_lines.mapped("debit")), 162.49)
-
-    def test_04_report_taxes(self):
-        """Taxes by group shown in reports"""
-        self.sale.partner_id = self.partner_2
-        self.sale.onchange_partner_id()
-        self.sale._amount_by_group()
-        # Taxes
-        taxes_groups = self.sale.amount_by_group
-        self.assertAlmostEqual(taxes_groups[0][1], 4.38)
-        self.assertAlmostEqual(taxes_groups[1][1], 13.13)
-        # Bases
-        self.assertAlmostEqual(taxes_groups[0][2], 87.5)
-        self.assertAlmostEqual(taxes_groups[1][2], 87.5)
 
     def test_05_incompatible_taxes(self):
         # Line 1 with tax 1 and tax 2
